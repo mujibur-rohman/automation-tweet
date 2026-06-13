@@ -1,0 +1,18 @@
+[Unit]
+Description=Threads to Buffer Automation
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Sesuaikan path & user
+WorkingDirectory=/opt/automation
+ExecStart=/usr/local/bin/bun run src/index.ts
+EnvironmentFile=/opt/automation/.env
+Restart=always
+RestartSec=5
+User=automation
+Group=automation
+
+[Install]
+WantedBy=multi-user.target
