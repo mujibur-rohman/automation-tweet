@@ -39,10 +39,25 @@ export function createUrlBot(cfg: UrlBotConfig): UrlBot {
     await ctx.api.editMessageText(ctx.chat.id, thinking.message_id, reply).catch(() => ctx.reply(reply));
   });
 
+  // Long-polling tahan banting: error polling sesaat (mis. 409 saat instance lama
+  // belum lepas) di-retry, bukan meng-crash proses.
+  let stopping = false;
+  const run = () => {
+    if (stopping) return;
+    bot.start().catch((err: any) => {
+      if (stopping) return;
+      console.error(`[telegram] polling error, retry 5s:`, err?.description ?? err?.message ?? err);
+      setTimeout(run, 5000);
+    });
+  };
+
   return {
     raw: bot,
-    start: () => bot.start(),
-    stop: () => bot.stop(),
+    start: () => run(),
+    stop: async () => {
+      stopping = true;
+      await bot.stop();
+    },
     notify: (text) => bot.api.sendMessage(allowed, text).then(() => {}),
   };
 }

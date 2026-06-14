@@ -41,8 +41,12 @@ export const config = {
     postMode: optional("BUFFER_POST_MODE", "addToQueue"),
   },
 
-  cron: {
-    sync: optional("SYNC_CRON", "*/15 * * * *"),
+  // Automation kedua (YouTube -> AI -> Telegram), terpisah dari Threads.
+  youtube: {
+    telegramBotToken: optional("YT_TELEGRAM_BOT_TOKEN", ""),
+    telegramChatId: optional("YT_TELEGRAM_CHAT_ID", ""),
+    kieToken: optional("KIE_API_TOKEN", ""),
+    textModel: optional("KIE_TEXT_MODEL", "claude-sonnet-4-6"),
   },
 } as const;
 
@@ -59,5 +63,5 @@ if (import.meta.main) {
   console.log("  TELEGRAM_CHAT_ID   :", config.telegram.chatId || "(kosong)");
   console.log("  BUFFER token       :", redact(config.buffer.accessToken));
   console.log("  BUFFER profiles    :", config.buffer.profileIds.length);
-  console.log("  CRON sync          :", config.cron.sync);
+  console.log("  YT bot/kie         :", redact(config.youtube.telegramBotToken), "/", redact(config.youtube.kieToken));
 }
