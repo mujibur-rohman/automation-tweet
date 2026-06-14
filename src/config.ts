@@ -47,6 +47,8 @@ export const config = {
     telegramChatId: optional("YT_TELEGRAM_CHAT_ID", ""),
     kieToken: optional("KIE_API_TOKEN", ""),
     textModel: optional("KIE_TEXT_MODEL", "claude-sonnet-4-6"),
+    // Channel Buffer untuk flow artikel (abangantech).
+    bufferChannelId: optional("YT_BUFFER_CHANNEL_ID", ""),
   },
 } as const;
 

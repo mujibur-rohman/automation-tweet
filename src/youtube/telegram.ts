@@ -3,7 +3,8 @@ import { config } from "../config";
 
 const MSG_LIMIT = 4096; // batas pesan teks Telegram
 
-async function send(text: string): Promise<void> {
+/** Kirim satu pesan teks ke chat abangantech. */
+export async function sendText(text: string): Promise<void> {
   const res = await fetch(`https://api.telegram.org/bot${config.youtube.telegramBotToken}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -15,6 +16,6 @@ async function send(text: string): Promise<void> {
 
 /** Kirim tweet lalu prompt image sebagai dua pesan terpisah (mudah di-copy). */
 export async function sendResult(tweet: string, imagePrompt: string): Promise<void> {
-  await send(tweet);
-  await send(`🖼️ IMAGE PROMPT:\n\n${imagePrompt}`);
+  await sendText(tweet);
+  await sendText(`🖼️ IMAGE PROMPT:\n\n${imagePrompt}`);
 }

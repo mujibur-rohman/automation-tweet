@@ -11,7 +11,8 @@ export type UrlBot = {
 export type UrlBotConfig = {
   token: string;
   allowedChatId: string | number;
-  onUrl: (url: string) => Promise<string>;
+  // url = URL pertama yang ditemukan; fullText = seluruh isi pesan (untuk artikel).
+  onUrl: (url: string, fullText: string) => Promise<string>;
 };
 
 const URL_RE = /(https?:\/\/[^\s]+)/i;
@@ -23,16 +24,17 @@ export function createUrlBot(cfg: UrlBotConfig): UrlBot {
   bot.on("message:text", async (ctx) => {
     if (String(ctx.chat.id) !== allowed) return;
 
-    const match = ctx.message.text.match(URL_RE);
+    const text = ctx.message.text;
+    const match = text.match(URL_RE);
     if (!match) {
-      await ctx.reply("Kirim URL post Threads untuk diproses.");
+      await ctx.reply("Kirim URL (YouTube/Threads) atau teks artikel + URL di akhir.");
       return;
     }
     const url = match[1]!;
     const thinking = await ctx.reply("⏳ Memproses...");
     let reply: string;
     try {
-      reply = await cfg.onUrl(url);
+      reply = await cfg.onUrl(url, text);
     } catch (err) {
       reply = `❌ Error: ${(err as Error).message}`;
     }
