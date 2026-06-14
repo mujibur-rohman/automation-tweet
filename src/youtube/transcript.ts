@@ -1,12 +1,8 @@
-// Ambil transcript YouTube dengan FALLBACK:
-//  1) youtube-transcript (gratis, jalan dari IP residensial)
-//  2) RapidAPI youtube-v2 /video/subtitles (jalan dari VPS yang diblok YouTube)
+// Ambil transcript YouTube via library youtube-transcript (scrape langsung).
+// Catatan: dari IP datacenter (VPS) sering diblok YouTube; andal dari IP residensial.
 import { YoutubeTranscript } from "youtube-transcript";
-import { config } from "../config";
 
 export class TranscriptError extends Error {}
-
-const RAPID_SUB_HOST = "youtube-v2.p.rapidapi.com";
 
 /** Ekstrak video_id dari berbagai bentuk URL YouTube (watch, youtu.be, shorts). */
 export function parseVideoId(url: string): string | null {
@@ -24,48 +20,19 @@ export function parseVideoId(url: string): string | null {
   return null;
 }
 
-function joinText(parts: string[]): string {
-  const text = parts.join(" ").replace(/\s+/g, " ").trim();
-  if (!text) throw new TranscriptError("Transcript kosong");
-  return text;
-}
-
-/** Sumber 1: library youtube-transcript (scrape langsung). */
-async function fromYoutubeTranscript(videoId: string): Promise<string> {
-  const segments = await YoutubeTranscript.fetchTranscript(videoId);
-  return joinText(segments.map((s) => s.text));
-}
-
-/** Sumber 2: RapidAPI youtube-v2 /video/subtitles. */
-async function fromRapidApi(videoId: string): Promise<string> {
-  const url = new URL(`https://${RAPID_SUB_HOST}/video/subtitles`);
-  url.searchParams.set("video_id", videoId);
-  const res = await fetch(url, {
-    headers: { "x-rapidapi-key": config.rapidApi.key, "x-rapidapi-host": RAPID_SUB_HOST },
-  });
-  if (!res.ok) throw new TranscriptError(`RapidAPI subtitles HTTP ${res.status}`);
-  const json: any = await res.json();
-  if (json?.is_available === false || !Array.isArray(json?.subtitles) || json.subtitles.length === 0) {
-    throw new TranscriptError("Subtitle tidak tersedia di video ini");
-  }
-  return joinText(json.subtitles.map((s: any) => s.text ?? ""));
-}
-
-/** Ambil transcript (gabungan teks), mencoba tiap sumber berurutan. */
+/** Ambil transcript (digabung jadi satu teks) via youtube-transcript. */
 export async function fetchTranscript(videoId: string): Promise<string> {
-  const sources = [
-    { name: "youtube-transcript", fn: () => fromYoutubeTranscript(videoId) },
-    { name: "rapidapi-youtube-v2", fn: () => fromRapidApi(videoId) },
-  ];
-  const errors: string[] = [];
-  for (const s of sources) {
-    try {
-      return await s.fn();
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      errors.push(`${s.name}: ${msg}`);
-      console.warn(`[transcript] ${s.name} gagal, coba berikutnya: ${msg}`);
-    }
+  try {
+    const segments = await YoutubeTranscript.fetchTranscript(videoId);
+    const text = segments
+      .map((s) => s.text)
+      .join(" ")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!text) throw new TranscriptError("Transcript kosong");
+    return text;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new TranscriptError(`Gagal ambil transcript: ${msg}`);
   }
-  throw new TranscriptError(`Gagal ambil transcript dari semua sumber -> ${errors.join(" | ")}`);
 }
