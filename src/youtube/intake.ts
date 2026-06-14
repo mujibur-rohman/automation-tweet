@@ -1,6 +1,6 @@
 // Pipeline YouTube: URL -> transcript -> narasi -> prompt image -> generate image (16:9)
 // -> tweet -> kirim foto+tweet ke Telegram + antrian Buffer (image sebagai lampiran).
-import { config } from "../config";
+import { config, type Lang } from "../config";
 import { parseVideoId, fetchTranscript } from "./transcript";
 import { insertProcessing, patch, markQueued, remove } from "./db";
 import { summarizeParagraph, buildImagePrompt, writeTweet } from "./ai";
@@ -8,7 +8,7 @@ import { generateImage } from "./image";
 import { sendPhoto } from "./telegram";
 import { createPost } from "../buffer/client";
 
-export async function handleYoutubeUrl(url: string): Promise<string> {
+export async function handleYoutubeUrl(url: string, lang: Lang = "id"): Promise<string> {
   const videoId = parseVideoId(url);
   if (!videoId) return "❌ URL YouTube tidak valid.";
 
@@ -22,16 +22,16 @@ export async function handleYoutubeUrl(url: string): Promise<string> {
     const transcript = await fetchTranscript(videoId);
     await patch(row.id, { transcript });
 
-    const paragraph = await summarizeParagraph(transcript);
+    const paragraph = await summarizeParagraph(transcript, lang);
     await patch(row.id, { paragraph });
 
-    const imagePrompt = await buildImagePrompt(paragraph);
+    const imagePrompt = await buildImagePrompt(paragraph, lang);
     await patch(row.id, { image_prompt: imagePrompt });
 
     imageUrl = await generateImage(imagePrompt, { aspectRatio: config.youtube.imageAspectRatio });
     await patch(row.id, { image_url: imageUrl });
 
-    tweet = (await writeTweet(paragraph)).trim();
+    tweet = (await writeTweet(paragraph, lang)).trim();
     await patch(row.id, { tweet });
   } catch (err) {
     await remove(row.id); // hapus agar bisa diproses ulang

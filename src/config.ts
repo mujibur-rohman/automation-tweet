@@ -1,6 +1,8 @@
 // Baca & validasi environment. Bun memuat .env otomatis (tanpa dotenv).
 // Gagal cepat: kalau ada env wajib yang kosong, lempar error saat startup.
 
+export type Lang = "en" | "id";
+
 function required(name: string): string {
   const value = process.env[name];
   if (!value || value.trim() === "") {

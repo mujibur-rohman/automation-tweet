@@ -1,6 +1,6 @@
 // Setup & start bot abangantech (dipakai oleh entrypoint sendiri & gabungan `all`).
 // Satu bot, dua flow: URL YouTube -> short; teks artikel + URL -> tweet artikel.
-import { config } from "../config";
+import { config, type Lang } from "../config";
 import { createUrlBot, type UrlBot } from "../telegram";
 import { handleYoutubeUrl } from "./intake";
 import { clearStaleProcessing } from "./db";
@@ -17,12 +17,12 @@ const TRAILING_URL_RE = /(https?:\/\/[^\s]+)\s*$/;
  * - URL di akhir teks -> flow konten dengan link sumber
  * - tanpa URL di akhir -> flow konten tanpa link (cuma generate tweet)
  */
-async function route(_url: string, fullText: string): Promise<string> {
+async function route(_url: string, fullText: string, lang: Lang): Promise<string> {
   const yt = fullText.match(YT_URL_RE);
-  if (yt) return handleYoutubeUrl(yt[1]!);
+  if (yt) return handleYoutubeUrl(yt[1]!, lang);
 
   const trailing = fullText.trim().match(TRAILING_URL_RE);
-  return handleArticle(fullText, trailing ? trailing[1]! : null);
+  return handleArticle(fullText, trailing ? trailing[1]! : null, lang);
 }
 
 export async function startYoutubeBot(): Promise<UrlBot> {
@@ -39,8 +39,9 @@ export async function startYoutubeBot(): Promise<UrlBot> {
     allowedChatId: config.youtube.telegramChatId,
     onUrl: route,
     requireUrl: false, // izinkan teks tanpa URL (flow konten tanpa link)
+    chooseLanguage: true, // tanya EN/ID dulu sebelum proses
   });
   bot.start();
-  console.log("[abangantech] bot jalan -> URL YouTube (short) / teks artikel + URL (tweet ke Buffer).");
+  console.log("[abangantech] bot jalan -> YouTube short / teks (+URL opsional), pilih bahasa EN/ID.");
   return bot;
 }

@@ -1,5 +1,19 @@
 // Client teks AI via kie.ai (proxy Claude, format Anthropic Messages).
-import { config } from "../config";
+import { config, type Lang } from "../config";
+
+/** Directive bahasa output untuk prompt prosa (narasi/tweet). */
+function outputLang(lang: Lang): string {
+  return lang === "en"
+    ? "\n\nOUTPUT LANGUAGE: English. Write the ENTIRE output in natural, casual, conversational English. (Abaikan aturan slang Indonesia 'gue/lo' di atas; pakai gaya santai English.)"
+    : "\n\nOUTPUT LANGUAGE: Bahasa Indonesia. Tulis SELURUH output dalam Bahasa Indonesia santai.";
+}
+
+/** Directive bahasa teks DI GAMBAR (prompt image tetap English). */
+function onImageLang(lang: Lang): string {
+  return lang === "en"
+    ? '\n\nOVERRIDE BAHASA: Semua teks di dalam gambar (on-image text) HARUS Bahasa Inggris (abaikan instruksi "BAHASA INDONESIA" di atas). Tulis: All English text crisp and legible.'
+    : "\n\nOVERRIDE BAHASA: Semua teks di dalam gambar (on-image text) HARUS Bahasa Indonesia.";
+}
 
 const ENDPOINT = "https://api.kie.ai/claude/v1/messages";
 
@@ -57,7 +71,7 @@ GAYA MANUSIAWI (wajib — biar tidak terasa ditulis AI):
 // ===========================================================================
 
 /** Langkah 4: transcript/subtitle -> narasi lengkap yang mengalir. */
-export function summarizeParagraph(transcript: string): Promise<string> {
+export function summarizeParagraph(transcript: string, lang: Lang): Promise<string> {
   const system = `Kamu adalah penulis naskah narasi profesional. Tugas kamu adalah mengubah subtitle yang diberikan menjadi sebuah narasi yang lengkap, mengalir, dan mudah dimengerti.
 
 ATURAN:
@@ -84,14 +98,14 @@ ATURAN:
    - Tulis narasi dalam Bahasa Indonesia.
    - Output HANYA narasinya, tanpa kalimat pembuka/penutup dari kamu.`;
   return complete(
-    system + HUMANIZER,
+    system + HUMANIZER + outputLang(lang),
     `Berikut subtitle-nya, langsung kerjakan:\n\n${transcript}`,
     4096,
   );
 }
 
 /** Langkah 5: paragraf/narasi -> SATU prompt image (gaya sketchnote infografik). */
-export async function buildImagePrompt(paragraph: string): Promise<string> {
+export async function buildImagePrompt(paragraph: string, lang: Lang): Promise<string> {
   const system = `You are a sketchnote infographic designer. From the Indonesian narration provided, produce EXACTLY ONE image prompt (in English) for AI image generation, a SINGLE standalone info slide.
 
 IMPORTANT (read first):
@@ -129,7 +143,7 @@ PROMPT WRITING RULES:
 - Close with: "STYLE: sketchnote aesthetic, marker pen textures, imperfect hand-drawn lines, spiral binding on top edge, scattered sparkle decorations, scanned-notebook look. All Indonesian text crisp and legible."
 
 Base the title, cards, and takeaway strictly on the key points of the narration. No hallucination.`;
-  const out = await complete(system, `Narasi:\n\n${paragraph}`, 1500);
+  const out = await complete(system + onImageLang(lang), `Narasi:\n\n${paragraph}`, 1500);
   // Pengaman: pastikan ini benar prompt (mengandung anchor gaya), bukan penolakan AI.
   if (!/sketchnote|notebook/i.test(out)) {
     throw new Error(
@@ -140,7 +154,7 @@ Base the title, cards, and takeaway strictly on the key points of the narration.
 }
 
 /** Langkah 7: narasi -> postingan X long-form dengan hook (gaya viral, Indonesia). */
-export function writeTweet(paragraph: string): Promise<string> {
+export function writeTweet(paragraph: string, lang: Lang): Promise<string> {
   const system = `Kamu penulis konten viral X (Twitter) berbahasa Indonesia. Dari narasi video berikut, tulis SATU postingan panjang (long-form) yang nge-hook dan mudah dimengerti.
 
 POLA & STRUKTUR (ikuti gaya ini):
@@ -164,11 +178,11 @@ ATURAN BAHASA:
 OUTPUT:
 - HANYA teks postingannya. Tanpa tanda kutip pembungkus, tanpa label, tanpa penjelasan tambahan.
 - Boleh panjang (long-form), tidak dibatasi 280 karakter.`;
-  return complete(system + HUMANIZER, `Narasi:\n\n${paragraph}`, 1024);
+  return complete(system + HUMANIZER + outputLang(lang), `Narasi:\n\n${paragraph}`, 1024);
 }
 
 /** Artikel -> SATU quote tweet (respons + insight, gaya content strategist). */
-export function writeArticleTweet(article: string): Promise<string> {
+export function writeArticleTweet(article: string, lang: Lang): Promise<string> {
   const system = `Kamu adalah seorang content strategist yang ahli membuat quote tweet yang engaging di X (Twitter). Tugasmu membuat quote tweet berdasarkan KONTEN yang diberikan (bisa artikel, thread, post, atau catatan apa pun).
 
 GAYA PENULISAN:
@@ -235,5 +249,5 @@ OUTPUT (PENTING — pipeline akan langsung mem-posting hasilmu):
 - HANYA teks tweet-nya. Tanpa tanda kutip pembungkus, tanpa preface/penutup dari kamu.
 - JANGAN sertakan URL/link apa pun (link ditambahkan terpisah oleh sistem).
 - Boleh panjang, tidak dibatasi 280 karakter.`;
-  return complete(system + HUMANIZER, `Sekarang, buatkan quote tweet dari konten berikut:\n\n${article}`, 1024);
+  return complete(system + HUMANIZER + outputLang(lang), `Sekarang, buatkan quote tweet dari konten berikut:\n\n${article}`, 1024);
 }
