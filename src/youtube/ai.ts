@@ -37,6 +37,20 @@ async function complete(
   return String(text).trim();
 }
 
+// Blok gaya "manusiawi" — ditempel ke prompt prosa (narasi & tweet) supaya
+// tulisannya tidak terasa ditulis AI. (Tidak dipakai untuk prompt gambar.)
+const HUMANIZER = `
+
+GAYA MANUSIAWI (wajib — biar tidak terasa ditulis AI):
+- Spesifik, bukan generik. Pakai angka, nama, dan contoh konkret. Tapi HANYA yang ada di sumber/konteks; jangan mengarang fakta atau angka.
+- Langsung dan percaya diri. Buang hedging: "mungkin", "bisa jadi", "kurang lebih", "sepertinya".
+- Buang jargon korporat & kata kosong: "revolusioner", "game-changer", "cutting-edge", "memberdayakan", "seamless", "unlock potensi", "di era digital".
+- Buang pembukaan heboh & basa-basi: jangan mulai dengan "Di era sekarang...", "Menariknya...", "Tau nggak sih...", "Penting banget nih". Langsung ke inti.
+- Buang transisi klise: "mari kita bahas", "tanpa basa-basi", "pada akhirnya", "intinya".
+- Kalimat aktif, present tense. Pendek dan padat, tiap baris berbobot.
+- Buang kata pengisi: "sangat", "benar-benar", "sebenarnya", "cukup".
+- Tes: kalau kalimat itu bisa muncul di blog perusahaan mana pun, bikin lebih spesifik. Kalau tidak akan kamu ucapkan ke teman, jangan tulis.`;
+
 // ===========================================================================
 // PROMPT PLACEHOLDER — ganti dengan instruksi spesifik user (langkah 4, 5, 7).
 // Default di bawah generik agar pipeline bisa diuji end-to-end lebih dulu.
@@ -70,7 +84,7 @@ ATURAN:
    - Tulis narasi dalam Bahasa Indonesia.
    - Output HANYA narasinya, tanpa kalimat pembuka/penutup dari kamu.`;
   return complete(
-    system,
+    system + HUMANIZER,
     `Berikut subtitle-nya, langsung kerjakan:\n\n${transcript}`,
     4096,
   );
@@ -150,7 +164,7 @@ ATURAN BAHASA:
 OUTPUT:
 - HANYA teks postingannya. Tanpa tanda kutip pembungkus, tanpa label, tanpa penjelasan tambahan.
 - Boleh panjang (long-form), tidak dibatasi 280 karakter.`;
-  return complete(system, `Narasi:\n\n${paragraph}`, 1024);
+  return complete(system + HUMANIZER, `Narasi:\n\n${paragraph}`, 1024);
 }
 
 /** Artikel -> SATU quote tweet (respons + insight, gaya content strategist). */
@@ -221,5 +235,5 @@ OUTPUT (PENTING — pipeline akan langsung mem-posting hasilmu):
 - HANYA teks tweet-nya. Tanpa tanda kutip pembungkus, tanpa preface/penutup dari kamu.
 - JANGAN sertakan URL/link apa pun (link ditambahkan terpisah oleh sistem).
 - Boleh panjang, tidak dibatasi 280 karakter.`;
-  return complete(system, `Sekarang, buatkan quote tweet dari artikel berikut:\n\n${article}`, 1024);
+  return complete(system + HUMANIZER, `Sekarang, buatkan quote tweet dari artikel berikut:\n\n${article}`, 1024);
 }
