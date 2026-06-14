@@ -11,8 +11,10 @@ export type UrlBot = {
 export type UrlBotConfig = {
   token: string;
   allowedChatId: string | number;
-  // url = URL pertama yang ditemukan; fullText = seluruh isi pesan (untuk artikel).
+  // url = URL pertama yang ditemukan (atau ""); fullText = seluruh isi pesan.
   onUrl: (url: string, fullText: string) => Promise<string>;
+  // true (default): pesan tanpa URL ditolak. false: pesan tanpa URL tetap diproses.
+  requireUrl?: boolean;
 };
 
 const URL_RE = /(https?:\/\/[^\s]+)/i;
@@ -20,17 +22,18 @@ const URL_RE = /(https?:\/\/[^\s]+)/i;
 export function createUrlBot(cfg: UrlBotConfig): UrlBot {
   const bot = new Bot(cfg.token);
   const allowed = String(cfg.allowedChatId);
+  const requireUrl = cfg.requireUrl !== false;
 
   bot.on("message:text", async (ctx) => {
     if (String(ctx.chat.id) !== allowed) return;
 
     const text = ctx.message.text;
     const match = text.match(URL_RE);
-    if (!match) {
-      await ctx.reply("Kirim URL (YouTube/Threads) atau teks artikel + URL di akhir.");
+    if (requireUrl && !match) {
+      await ctx.reply("Kirim URL untuk diproses.");
       return;
     }
-    const url = match[1]!;
+    const url = match?.[1] ?? "";
     const thinking = await ctx.reply("⏳ Memproses...");
     let reply: string;
     try {

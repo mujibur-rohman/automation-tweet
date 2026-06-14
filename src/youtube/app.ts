@@ -7,18 +7,22 @@ import { clearStaleProcessing } from "./db";
 import { handleArticle } from "../article/intake";
 import { clearStaleProcessing as clearStaleArticles } from "../article/db";
 
-const YT_RE = /(?:youtube\.com|youtu\.be)/i;
-const URL_G = /(https?:\/\/[^\s]+)/gi;
+const YT_URL_RE = /(https?:\/\/[^\s]*(?:youtube\.com|youtu\.be)[^\s]*)/i;
+// Link sumber HANYA dikenali bila URL ada di AKHIR pesan (URL di tengah teks diabaikan).
+const TRAILING_URL_RE = /(https?:\/\/[^\s]+)\s*$/;
 
-/** Router: ada URL YouTube -> flow short; selain itu -> flow artikel (URL terakhir = link). */
+/**
+ * Router bot abangantech:
+ * - ada URL YouTube  -> flow short (transcript -> gambar -> Buffer + Telegram)
+ * - URL di akhir teks -> flow konten dengan link sumber
+ * - tanpa URL di akhir -> flow konten tanpa link (cuma generate tweet)
+ */
 async function route(_url: string, fullText: string): Promise<string> {
-  const urls = fullText.match(URL_G) ?? [];
-  const ytUrl = urls.find((u) => YT_RE.test(u));
-  if (ytUrl) return handleYoutubeUrl(ytUrl);
+  const yt = fullText.match(YT_URL_RE);
+  if (yt) return handleYoutubeUrl(yt[1]!);
 
-  const articleUrl = urls[urls.length - 1];
-  if (!articleUrl) return "Kirim URL YouTube, atau teks artikel + URL di akhir.";
-  return handleArticle(fullText, articleUrl);
+  const trailing = fullText.trim().match(TRAILING_URL_RE);
+  return handleArticle(fullText, trailing ? trailing[1]! : null);
 }
 
 export async function startYoutubeBot(): Promise<UrlBot> {
@@ -34,6 +38,7 @@ export async function startYoutubeBot(): Promise<UrlBot> {
     token: config.youtube.telegramBotToken,
     allowedChatId: config.youtube.telegramChatId,
     onUrl: route,
+    requireUrl: false, // izinkan teks tanpa URL (flow konten tanpa link)
   });
   bot.start();
   console.log("[abangantech] bot jalan -> URL YouTube (short) / teks artikel + URL (tweet ke Buffer).");
