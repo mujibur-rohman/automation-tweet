@@ -105,9 +105,9 @@ HARD CONSTRAINTS:
 
 LOCKED VISUAL STYLE (always include, non-negotiable):
 - Hand-drawn sketch-style educational infographic on a spiral notebook page
-- Portrait orientation 9:16, off-white paper background
+- Landscape orientation 16:9, off-white paper background
 - Marker pen textures, imperfect hand-drawn lines
-- Spiral binding on the LEFT edge
+- Spiral binding on the TOP edge
 - Scattered sparkle decorations, scanned-notebook aesthetic
 - All text crisp and legible
 
@@ -122,11 +122,11 @@ SINGLE INFO SLIDE STRUCTURE:
 4. KEY TAKEAWAY — dashed-border box + lightbulb doodle + actionable conclusion (use blue or red highlight)
 
 PROMPT WRITING RULES:
-- Open with the style anchor line (sketchnote + spiral notebook + portrait 9:16 + off-white + [border color] rough border frame).
+- Open with the style anchor line (sketchnote + spiral notebook + landscape 16:9 + off-white + [border color] rough border frame).
 - Use CAPS section headers within the prompt: TITLE, SUBTITLE, CONTENT GRID, KEY TAKEAWAY.
 - Specify ALL on-image text in quotes, in BAHASA INDONESIA (audience is Indonesian). Example: Title text appears as: "Apa Itu ..." in bold blue marker.
 - Describe each visual as "[item] doodle"; specify placement (top-left, top-right, etc.).
-- Close with: "STYLE: sketchnote aesthetic, marker pen textures, imperfect hand-drawn lines, spiral binding on left edge, scattered sparkle decorations, scanned-notebook look. All Indonesian text crisp and legible."
+- Close with: "STYLE: sketchnote aesthetic, marker pen textures, imperfect hand-drawn lines, spiral binding on top edge, scattered sparkle decorations, scanned-notebook look. All Indonesian text crisp and legible."
 
 Base the title, cards, and takeaway strictly on the key points of the narration. No hallucination.`;
   const out = await complete(system, `Narasi:\n\n${paragraph}`, 1500);

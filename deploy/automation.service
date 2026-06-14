@@ -1,18 +1,17 @@
 [Unit]
-Description=Threads to Buffer Automation
+Description=MY_PROJECT Automation (Threads + YouTube + Article)
 After=network-online.target postgresql.service
 Wants=network-online.target
 
 [Service]
 Type=simple
-# Sesuaikan path & user
+# Sesuaikan WorkingDirectory, path bun, dan User saat deploy.
 WorkingDirectory=/opt/automation
-ExecStart=/usr/local/bin/bun run src/index.ts
+ExecStart=/root/.bun/bin/bun run src/all.ts
 EnvironmentFile=/opt/automation/.env
 Restart=always
 RestartSec=5
-User=automation
-Group=automation
+User=root
 
 [Install]
 WantedBy=multi-user.target
