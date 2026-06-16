@@ -1,28 +1,31 @@
 // Setup & start bot abangantech (dipakai oleh entrypoint sendiri & gabungan `all`).
-// Satu bot, dua flow: URL YouTube -> short; teks artikel + URL -> tweet artikel.
+// Flow: URL YouTube -> short; URL lain -> scrape+gambar; teks tanpa URL -> tweet teks.
 import { config, type Lang } from "../config";
 import { createUrlBot, type UrlBot } from "../telegram";
 import { handleYoutubeUrl } from "./intake";
 import { clearStaleProcessing } from "./db";
 import { handleArticle } from "../article/intake";
 import { clearStaleProcessing as clearStaleArticles } from "../article/db";
+import { handleLink } from "../link/intake";
+import { clearStaleProcessing as clearStaleLinks } from "../link/db";
 
 const YT_URL_RE = /(https?:\/\/[^\s]*(?:youtube\.com|youtu\.be)[^\s]*)/i;
-// Link sumber HANYA dikenali bila URL ada di AKHIR pesan (URL di tengah teks diabaikan).
-const TRAILING_URL_RE = /(https?:\/\/[^\s]+)\s*$/;
+const URL_RE = /(https?:\/\/[^\s]+)/i;
 
 /**
  * Router bot abangantech:
- * - ada URL YouTube  -> flow short (transcript -> gambar -> Buffer + Telegram)
- * - URL di akhir teks -> flow konten dengan link sumber
- * - tanpa URL di akhir -> flow konten tanpa link (cuma generate tweet)
+ * - URL YouTube  -> flow short (transcript -> gambar -> tweet)
+ * - URL lain     -> flow scrape (scrape -> narasi -> gambar -> tweet)
+ * - tanpa URL    -> flow teks (tweet dari teks, tanpa gambar)
  */
 async function route(_url: string, fullText: string, lang: Lang): Promise<string> {
   const yt = fullText.match(YT_URL_RE);
   if (yt) return handleYoutubeUrl(yt[1]!, lang);
 
-  const trailing = fullText.trim().match(TRAILING_URL_RE);
-  return handleArticle(fullText, trailing ? trailing[1]! : null, lang);
+  const url = fullText.match(URL_RE);
+  if (url) return handleLink(url[1]!, lang);
+
+  return handleArticle(fullText, null, lang);
 }
 
 export async function startYoutubeBot(): Promise<UrlBot> {
@@ -31,17 +34,18 @@ export async function startYoutubeBot(): Promise<UrlBot> {
   }
   if (!config.youtube.kieToken) throw new Error("KIE_API_TOKEN belum diisi di .env");
 
-  const cleared = (await clearStaleProcessing()) + (await clearStaleArticles());
+  const cleared =
+    (await clearStaleProcessing()) + (await clearStaleArticles()) + (await clearStaleLinks());
   if (cleared) console.log(`[abangantech] bersihkan ${cleared} row 'processing' nyangkut (sisa crash).`);
 
   const bot = createUrlBot({
     token: config.youtube.telegramBotToken,
     allowedChatId: config.youtube.telegramChatId,
     onUrl: route,
-    requireUrl: false, // izinkan teks tanpa URL (flow konten tanpa link)
+    requireUrl: false, // izinkan teks tanpa URL (flow tweet teks)
     chooseLanguage: true, // tanya EN/ID dulu sebelum proses
   });
   bot.start();
-  console.log("[abangantech] bot jalan -> YouTube short / teks (+URL opsional), pilih bahasa EN/ID.");
+  console.log("[abangantech] bot jalan -> YouTube short / scrape link / teks, pilih bahasa EN/ID.");
   return bot;
 }

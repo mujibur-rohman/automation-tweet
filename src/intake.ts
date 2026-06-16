@@ -13,13 +13,12 @@ const TWEET_LIMIT = 280;
 
 /** Format post: "(isi)\n\nsc:(username)", dipangkas agar muat di Twitter. */
 function composeText(content: string, username: string): string {
-  const suffix = `\n\nscthread:${username}`;
-  const limit = TWEET_LIMIT - suffix.length - 1;
+  const limit = TWEET_LIMIT;
   const body =
     content.length > limit
       ? content.slice(0, limit - 1).trimEnd() + "…"
       : content;
-  return (body + suffix).trim();
+  return body.trim();
 }
 
 /**
@@ -42,7 +41,11 @@ export async function handleUrl(url: string): Promise<string> {
   }
 
   const { username, shortcode } = parseUrl(url);
-  const post = await fetchPostDetail({ postId, shortcode: shortcode ?? "", username: username ?? "" });
+  const post = await fetchPostDetail({
+    postId,
+    shortcode: shortcode ?? "",
+    username: username ?? "",
+  });
   post.sourcePostId = postId; // kunci dedup kanonik dari get-id
 
   // Sesuaikan media ke aturan Twitter; simpan media final ke DB.
@@ -67,7 +70,8 @@ export async function handleUrl(url: string): Promise<string> {
   const mediaInfo = media.length
     ? `${media.length} media (${media.map((m) => m.type).join(", ")})`
     : "tanpa media";
-  const droppedInfo = dropped > 0 ? `\n(${dropped} media lain diabaikan utk aturan Twitter)` : "";
+  const droppedInfo =
+    dropped > 0 ? `\n(${dropped} media lain diabaikan utk aturan Twitter)` : "";
   return `✅ Masuk antrian Buffer.\n@${post.authorUsername} · ${mediaInfo}${droppedInfo}`;
 }
 

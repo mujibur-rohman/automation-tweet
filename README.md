@@ -56,14 +56,14 @@ bun run sync:once                                          # update status poste
 
 ## Konfigurasi (.env)
 
-| Var | Keterangan |
-|---|---|
-| `DATABASE_URL` | koneksi Postgres |
-| `RAPIDAPI_KEY` / `RAPIDAPI_THREADS_HOST` | RapidAPI Threads (`threads-api4.p.rapidapi.com`) |
-| `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` | bot & chat tujuan |
-| `BUFFER_ACCESS_TOKEN` / `BUFFER_ORG_ID` / `BUFFER_PROFILE_IDS` | Buffer (channel id, koma-pisah) |
-| `BUFFER_POST_MODE` | `addToQueue` (default) / `customScheduled` / `shareNow` |
-| `SYNC_CRON` | jadwal cron untuk update status posted |
+| Var                                                            | Keterangan                                              |
+| -------------------------------------------------------------- | ------------------------------------------------------- |
+| `DATABASE_URL`                                                 | koneksi Postgres                                        |
+| `RAPIDAPI_KEY` / `RAPIDAPI_THREADS_HOST`                       | RapidAPI Threads (`threads-api4.p.rapidapi.com`)        |
+| `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID`                      | bot & chat tujuan                                       |
+| `BUFFER_ACCESS_TOKEN` / `BUFFER_ORG_ID` / `BUFFER_PROFILE_IDS` | Buffer (channel id, koma-pisah)                         |
+| `BUFFER_POST_MODE`                                             | `addToQueue` (default) / `customScheduled` / `shareNow` |
+| `SYNC_CRON`                                                    | jadwal cron untuk update status posted                  |
 
 ## Arsitektur
 
@@ -96,11 +96,12 @@ journalctl -u automation -f
 `sources/threads.ts` mencoba beberapa host RapidAPI berurutan. Tiap host = API berbeda →
 **kuota bulanan terpisah**, jadi kalau satu kena limit (429) otomatis lanjut ke berikutnya.
 Provider saat ini (urut prioritas):
+
 1. `threads-api4` (`/api/post/detail`) — caption + media
 2. `threads-by-meta...` (`/get_thread_details`) — caption + media
 3. `threads-public-data-api` (`/post/detail?shortCodeOrUrl=`) — caption + media
 4. `threads14` (`/post.php?code=`) — caption + media
-5. `threads-media-download` (`POST /post/idcode`) — **media saja, tanpa caption** (cadangan terakhir; post keluar dgn media + `scthread:username` tapi tanpa teks)
+5. `threads-media-download` (`POST /post/idcode`) — **media saja, tanpa caption** (cadangan terakhir; post keluar dgn media tapi tanpa teks)
 
 (`threads-data-api` tidak dipakai — media-only tanpa caption.)
 Tambah provider baru = tambah entri di array `PROVIDERS`. 429 di satu host → langsung lompat ke host berikutnya (tanpa buang kuota).
