@@ -1,11 +1,11 @@
-// Pipeline YouTube: URL -> transcript -> narasi -> prompt image -> generate image (16:9)
-// -> tweet -> kirim foto+tweet ke Telegram + antrian Buffer (image sebagai lampiran).
+// Pipeline YouTube: URL -> transcript -> narasi -> tweet (+ gambar 16:9 best-effort)
+// -> kirim ke Telegram (foto kalau ada gambar, teks kalau tidak) + antrian Buffer.
 import { config, type Lang } from "../config";
 import { parseVideoId, fetchTranscript } from "./transcript";
 import { insertProcessing, patch, markQueued, remove } from "./db";
 import { summarizeParagraph, buildImagePrompt, writeTweet } from "./ai";
 import { generateImage } from "./image";
-import { sendPhoto } from "./telegram";
+import { sendPhoto, sendText } from "./telegram";
 import { createPost } from "../buffer/client";
 
 export async function handleYoutubeUrl(url: string, lang: Lang = "id"): Promise<string> {
@@ -15,9 +15,9 @@ export async function handleYoutubeUrl(url: string, lang: Lang = "id"): Promise<
   const row = await insertProcessing(videoId, url);
   if (!row) return "⚠️ Ditolak — video ini sudah pernah diproses (ada di database).";
 
-  // 1) Pipeline konten: transcript -> narasi -> prompt image -> generate image -> tweet.
-  let imageUrl: string;
+  // 1) Konten + narasi + tweet (fatal kalau gagal). Gambar best-effort.
   let tweet: string;
+  let imageUrl: string | null = null;
   try {
     const transcript = await fetchTranscript(videoId);
     await patch(row.id, { transcript });
@@ -25,39 +25,45 @@ export async function handleYoutubeUrl(url: string, lang: Lang = "id"): Promise<
     const paragraph = await summarizeParagraph(transcript, lang);
     await patch(row.id, { paragraph });
 
-    const imagePrompt = await buildImagePrompt(paragraph, lang);
-    await patch(row.id, { image_prompt: imagePrompt });
-
-    imageUrl = await generateImage(imagePrompt, { aspectRatio: config.youtube.imageAspectRatio });
-    await patch(row.id, { image_url: imageUrl });
-
     tweet = (await writeTweet(paragraph, lang)).trim();
     await patch(row.id, { tweet });
+
+    // Gambar best-effort: kalau gagal (mis. kredit habis 402), lanjut tanpa gambar.
+    try {
+      const imagePrompt = await buildImagePrompt(paragraph, lang);
+      await patch(row.id, { image_prompt: imagePrompt });
+      imageUrl = await generateImage(imagePrompt, { aspectRatio: config.youtube.imageAspectRatio });
+      await patch(row.id, { image_url: imageUrl });
+    } catch (err) {
+      console.warn(`[youtube] gambar gagal, lanjut tanpa gambar: ${(err as Error).message}`);
+    }
   } catch (err) {
     await remove(row.id); // hapus agar bisa diproses ulang
     return `❌ Gagal proses: ${(err as Error).message}`;
   }
 
-  // 2) Kirim foto + tweet ke Telegram.
+  // 2) Kirim ke Telegram: foto+tweet kalau ada gambar, teks saja kalau tidak.
   try {
-    await sendPhoto(imageUrl, tweet);
+    if (imageUrl) await sendPhoto(imageUrl, tweet);
+    else await sendText(tweet);
   } catch (err) {
     await remove(row.id);
     return `❌ Gagal kirim ke Telegram: ${(err as Error).message}`;
   }
 
-  // 3) Buffer (best-effort) — tweet + image sebagai lampiran.
+  // 3) Buffer (best-effort) — lampirkan gambar kalau ada.
+  const noImg = imageUrl ? "" : " (tanpa gambar — generate image gagal)";
   try {
     const r = await createPost({
       channelId: config.youtube.bufferChannelId,
       text: tweet,
-      media: [{ type: "image", url: imageUrl }],
+      media: imageUrl ? [{ type: "image", url: imageUrl }] : undefined,
     });
     await markQueued(row.id, r.postId, r.dueAt ? new Date(r.dueAt) : null);
-    return "✅ Terkirim ke Telegram + masuk antrian Buffer (abangantech) dengan gambar.";
+    return `✅ Terkirim ke Telegram + antrian Buffer (abangantech)${noImg}.`;
   } catch (err) {
     await patch(row.id, { status: "failed", error: (err as Error).message });
-    return `✅ Terkirim ke Telegram.\n⚠️ Buffer gagal: ${(err as Error).message}`;
+    return `✅ Terkirim ke Telegram${noImg}.\n⚠️ Buffer gagal: ${(err as Error).message}`;
   }
 }
 
