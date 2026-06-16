@@ -63,7 +63,19 @@ GAYA MANUSIAWI (wajib — biar tidak terasa ditulis AI):
 - Buang transisi klise: "mari kita bahas", "tanpa basa-basi", "pada akhirnya", "intinya".
 - Kalimat aktif, present tense. Pendek dan padat, tiap baris berbobot.
 - Buang kata pengisi: "sangat", "benar-benar", "sebenarnya", "cukup".
-- Tes: kalau kalimat itu bisa muncul di blog perusahaan mana pun, bikin lebih spesifik. Kalau tidak akan kamu ucapkan ke teman, jangan tulis.`;
+- Tes: kalau kalimat itu bisa muncul di blog perusahaan mana pun, bikin lebih spesifik. Kalau tidak akan kamu ucapkan ke teman, jangan tulis.
+- JANGAN pakai format markdown apa pun: tanpa **bold**, tanpa *italic*, tanpa # heading, tanpa backtick. Tulis teks polos (plain text) saja.`;
+
+/** Bersihkan output: hapus emphasis markdown (**bold**, *italic*) & em/en dash (— –). */
+function stripMarkdown(s: string): string {
+  return s
+    .replace(/\*\*(.*?)\*\*/gs, "$1")
+    .replace(/\*(.+?)\*/gs, "$1")
+    .replace(/\*+/g, "")
+    .replace(/\s*[—–]\s*/g, ", ") // em/en dash -> koma (gaya tanpa dash panjang)
+    .replace(/,\s*,/g, ",")
+    .trim();
+}
 
 // ===========================================================================
 // PROMPT PLACEHOLDER — ganti dengan instruksi spesifik user (langkah 4, 5, 7).
@@ -154,7 +166,7 @@ Base the title, cards, and takeaway strictly on the key points of the narration.
 }
 
 /** Langkah 7: narasi -> postingan X long-form dengan hook (gaya viral, Indonesia). */
-export function writeTweet(paragraph: string, lang: Lang): Promise<string> {
+export async function writeTweet(paragraph: string, lang: Lang): Promise<string> {
   const system = `Kamu penulis konten viral X (Twitter) berbahasa Indonesia. Dari narasi video berikut, tulis SATU postingan panjang (long-form) yang nge-hook dan mudah dimengerti.
 
 POLA & STRUKTUR (ikuti gaya ini):
@@ -178,11 +190,11 @@ ATURAN BAHASA:
 OUTPUT:
 - HANYA teks postingannya. Tanpa tanda kutip pembungkus, tanpa label, tanpa penjelasan tambahan.
 - Boleh panjang (long-form), tidak dibatasi 280 karakter.`;
-  return complete(system + HUMANIZER + outputLang(lang), `Narasi:\n\n${paragraph}`, 1024);
+  return stripMarkdown(await complete(system + HUMANIZER + outputLang(lang), `Narasi:\n\n${paragraph}`, 1024));
 }
 
 /** Artikel -> SATU quote tweet (respons + insight, gaya content strategist). */
-export function writeArticleTweet(article: string, lang: Lang): Promise<string> {
+export async function writeArticleTweet(article: string, lang: Lang): Promise<string> {
   const system = `Kamu adalah seorang content strategist yang ahli membuat quote tweet yang engaging di X (Twitter). Tugasmu membuat quote tweet berdasarkan KONTEN yang diberikan (bisa artikel, thread, post, atau catatan apa pun).
 
 GAYA PENULISAN:
@@ -249,5 +261,5 @@ OUTPUT (PENTING — pipeline akan langsung mem-posting hasilmu):
 - HANYA teks tweet-nya. Tanpa tanda kutip pembungkus, tanpa preface/penutup dari kamu.
 - JANGAN sertakan URL/link apa pun (link ditambahkan terpisah oleh sistem).
 - Boleh panjang, tidak dibatasi 280 karakter.`;
-  return complete(system + HUMANIZER + outputLang(lang), `Sekarang, buatkan quote tweet dari konten berikut:\n\n${article}`, 1024);
+  return stripMarkdown(await complete(system + HUMANIZER + outputLang(lang), `Sekarang, buatkan quote tweet dari konten berikut:\n\n${article}`, 1024));
 }
