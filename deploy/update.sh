@@ -1,14 +1,17 @@
 #!/usr/bin/env bash
 # Update & restart automation di VPS dengan satu perintah:
 #   ~/automation/deploy/update.sh
-# Langkah: git pull -> bun install -> migrasi DB -> restart service.
+# Langkah: sync ke origin -> bun install -> migrasi DB -> restart service.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."   # pindah ke root repo (folder deploy/ ada di dalamnya)
 BUN="$HOME/.bun/bin/bun"
 
-echo "==> git pull"
-git pull --ff-only
+# Paksa sinkron ke origin/master. reset --hard aman: .env di-gitignore (tak terhapus),
+# dan ini menghindari "Aborting" gara-gara bun.lock termodifikasi oleh bun install.
+echo "==> sync ke origin/master"
+git fetch origin
+git reset --hard origin/master
 
 echo "==> bun install"
 "$BUN" install
