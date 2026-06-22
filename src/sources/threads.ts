@@ -252,8 +252,18 @@ export async function fetchPostDetail(ctx: FetchContext): Promise<NormalizedPost
   for (const provider of PROVIDERS) {
     try {
       const result = await withRetry(() => provider.fetch(ctx));
-      if (result.media.length > 0) return result;
-      if (!noMediaFallback) noMediaFallback = result;
+      if (result.media.length > 0) {
+        // Provider media-only (mis. media-download) balas tanpa caption ->
+        // ambil caption/permalink dari provider ber-caption sebelumnya.
+        if (!result.content && noMediaFallback) {
+          result.content = noMediaFallback.content;
+          result.authorUsername = result.authorUsername || noMediaFallback.authorUsername;
+          result.permalink = result.permalink || noMediaFallback.permalink;
+          result.takenAt = result.takenAt ?? noMediaFallback.takenAt;
+        }
+        return result;
+      }
+      if (!noMediaFallback || (!noMediaFallback.content && result.content)) noMediaFallback = result;
       console.warn(`[threads] provider ${provider.name} balas tanpa media, coba provider lain.`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
