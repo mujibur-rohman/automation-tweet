@@ -48,7 +48,16 @@ export async function insertQueued(
       ${post.media}::jsonb, ${post.permalink}, ${post.takenAt},
       'queued', ${bufferUpdateId}, ${scheduledAt}
     )
-    ON CONFLICT (source_post_id) DO NOTHING
+    ON CONFLICT (source_post_id) DO UPDATE SET
+      author_username = EXCLUDED.author_username,
+      content = EXCLUDED.content,
+      media_urls = EXCLUDED.media_urls,
+      permalink = EXCLUDED.permalink,
+      taken_at = EXCLUDED.taken_at,
+      status = 'queued',
+      buffer_update_id = EXCLUDED.buffer_update_id,
+      scheduled_at = EXCLUDED.scheduled_at,
+      updated_at = now()
     RETURNING *`;
   return mapRow(rows[0]);
 }

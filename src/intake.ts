@@ -6,7 +6,7 @@ import {
   parseUrl,
   type MediaItem,
 } from "./sources/threads";
-import { existsBySourceId, insertQueued } from "./db/posts.repo";
+import { insertQueued } from "./db/posts.repo";
 import { createPost } from "./buffer/client";
 
 const TWEET_LIMIT = 280;
@@ -35,10 +35,6 @@ function normalizeMediaForTwitter(media: MediaItem[]): MediaItem[] {
 /** Proses satu URL. Mengembalikan teks balasan untuk Telegram. */
 export async function handleUrl(url: string): Promise<string> {
   const postId = await resolvePostIdFromUrl(url);
-
-  if (await existsBySourceId(postId)) {
-    return "⚠️ Ditolak — post ini sudah pernah diproses (ada di database).";
-  }
 
   const { username, shortcode } = parseUrl(url);
   const post = await fetchPostDetail({
