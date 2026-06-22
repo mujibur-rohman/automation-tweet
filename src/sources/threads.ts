@@ -129,7 +129,12 @@ function extractMedia(post: any): MediaItem[] {
     return carousel.map(mediaFromNode).filter((m): m is MediaItem => m !== null);
   }
   const single = mediaFromNode(post);
-  return single ? [single] : [];
+  if (single) return [single];
+  // Fallback: media tertaut inline (mis. media_type 19 / video di text post),
+  // tersembunyi di text_post_app_info.linked_inline_media.
+  const linked = post?.text_post_app_info?.linked_inline_media;
+  if (linked) return extractMedia(linked);
+  return [];
 }
 
 /** Map objek post (shape IG/Threads) -> NormalizedPost. */
@@ -235,19 +240,28 @@ const PROVIDERS: Provider[] = [
 
 /**
  * Ambil detail post (ternormalisasi), mencoba tiap provider berurutan.
- * Provider gagal (limit/error/kosong) -> lanjut ke provider berikutnya.
+ * - Provider gagal (limit/error/kosong) -> lanjut ke provider berikutnya.
+ * - Hasil dengan media diutamakan: kalau sebuah provider balas konten tapi
+ *   media-nya KOSONG (sering kejadian di post video), simpan sebagai cadangan
+ *   dan coba provider lain yang mungkin punya media. Kalau semua kosong (mis.
+ *   post teks asli), pakai hasil pertama yang berhasil.
  */
 export async function fetchPostDetail(ctx: FetchContext): Promise<NormalizedPost> {
   const errors: string[] = [];
+  let noMediaFallback: NormalizedPost | null = null;
   for (const provider of PROVIDERS) {
     try {
-      return await withRetry(() => provider.fetch(ctx));
+      const result = await withRetry(() => provider.fetch(ctx));
+      if (result.media.length > 0) return result;
+      if (!noMediaFallback) noMediaFallback = result;
+      console.warn(`[threads] provider ${provider.name} balas tanpa media, coba provider lain.`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       errors.push(`${provider.name}: ${msg}`);
       console.warn(`[threads] provider ${provider.name} gagal, coba berikutnya: ${msg}`);
     }
   }
+  if (noMediaFallback) return noMediaFallback;
   throw new ThreadsApiError(`Semua provider gagal -> ${errors.join(" | ")}`, 502, false);
 }
 
