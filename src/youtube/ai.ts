@@ -15,7 +15,8 @@ function onImageLang(lang: Lang): string {
     : "\n\nOVERRIDE BAHASA: Semua teks di dalam gambar (on-image text) HARUS Bahasa Indonesia.";
 }
 
-const ENDPOINT = "https://api.kie.ai/claude/v1/messages";
+// kie.ai Gemini 2.5 Flash (format OpenAI chat completions).
+const ENDPOINT = "https://api.kie.ai/gemini-2.5-flash/v1/chat/completions";
 
 async function complete(
   system: string,
@@ -29,24 +30,23 @@ async function complete(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: config.youtube.textModel,
-      max_tokens: maxTokens,
       stream: false,
-      ...(system ? { system } : {}),
-      messages: [{ role: "user", content: user }],
+      max_tokens: maxTokens,
+      messages: [
+        ...(system ? [{ role: "system", content: system }] : []),
+        { role: "user", content: user },
+      ],
     }),
   });
   if (!res.ok)
     throw new Error(
-      `kie.ai text HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`,
+      `kie.ai gemini HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`,
     );
   const json: any = await res.json();
-  const text =
-    json?.content?.find((c: any) => c.type === "text")?.text ??
-    json?.content?.[0]?.text;
+  const text = json?.choices?.[0]?.message?.content;
   if (!text)
     throw new Error(
-      `kie.ai text respons tak terduga: ${JSON.stringify(json).slice(0, 200)}`,
+      `kie.ai gemini respons tak terduga: ${JSON.stringify(json).slice(0, 200)}`,
     );
   return String(text).trim();
 }
