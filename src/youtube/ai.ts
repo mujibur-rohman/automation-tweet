@@ -51,20 +51,48 @@ async function complete(
   return String(text).trim();
 }
 
-// Blok gaya "manusiawi" — ditempel ke prompt prosa (narasi & tweet) supaya
-// tulisannya tidak terasa ditulis AI. (Tidak dipakai untuk prompt gambar.)
+// Blok gaya "manusiawi" — port dari skill /humanizer (Wikipedia "Signs of AI writing").
+// Ditempel ke prompt prosa (narasi & tweet) supaya tulisannya tidak terasa ditulis AI.
+// (Tidak dipakai untuk prompt gambar.) Aturan berlaku untuk output ID maupun EN.
 const HUMANIZER = `
 
-GAYA MANUSIAWI (wajib — biar tidak terasa ditulis AI):
-- Spesifik, bukan generik. Pakai angka, nama, dan contoh konkret. Tapi HANYA yang ada di sumber/konteks; jangan mengarang fakta atau angka.
-- Langsung dan percaya diri. Buang hedging: "mungkin", "bisa jadi", "kurang lebih", "sepertinya".
-- Buang jargon korporat & kata kosong: "revolusioner", "game-changer", "cutting-edge", "memberdayakan", "seamless", "unlock potensi", "di era digital".
-- Buang pembukaan heboh & basa-basi: jangan mulai dengan "Di era sekarang...", "Menariknya...", "Tau nggak sih...", "Penting banget nih". Langsung ke inti.
-- Buang transisi klise: "mari kita bahas", "tanpa basa-basi", "pada akhirnya", "intinya".
-- Kalimat aktif, present tense. Pendek dan padat, tiap baris berbobot.
-- Buang kata pengisi: "sangat", "benar-benar", "sebenarnya", "cukup".
-- Tes: kalau kalimat itu bisa muncul di blog perusahaan mana pun, bikin lebih spesifik. Kalau tidak akan kamu ucapkan ke teman, jangan tulis.
-- JANGAN pakai format markdown apa pun: tanpa **bold**, tanpa *italic*, tanpa # heading, tanpa backtick. Tulis teks polos (plain text) saja.`;
+GAYA MANUSIAWI (WAJIB — buang semua tanda tulisan AI. Ini berlaku ketat, bukan saran):
+
+ISI & KLAIM
+- Spesifik, bukan generik. Pakai angka, nama, contoh konkret, TAPI hanya yang ada di sumber; jangan mengarang fakta/angka.
+- Jangan membesar-besarkan makna/legasi. Buang: "menandai momen penting", "jadi bukti nyata", "berperan krusial/vital", "membentuk lanskap", "babak baru", "titik balik", "mencerminkan tren yang lebih luas".
+- Jangan promosi/iklan. Buang: "revolusioner", "game-changer", "cutting-edge", "mutakhir", "memberdayakan", "seamless", "unlock potensi", "luar biasa", "menakjubkan", "wajib dicoba".
+- Atribusi jelas atau tidak sama sekali. Buang "para ahli bilang", "banyak yang berpendapat", "menurut laporan industri" tanpa sumber konkret.
+
+BAHASA & TATA KALIMAT
+- Buang kosakata khas AI: "delve/menyelami", "krusial", "pivotal", "menyoroti", "memperkaya", "interplay", "rumit/kompleksitas", "tapestry", "underscore", "selain itu (additionally)" yang ditumpuk.
+- Pakai kata kerja "adalah/punya" langsung; jangan diganti "berfungsi sebagai", "berdiri sebagai", "menghadirkan", "menawarkan".
+- Buang frasa -ing/penjelas palsu: "...yang menyoroti...", "...sehingga memastikan...", "...mencerminkan...", "...berkontribusi pada...".
+- Jangan paralelisme negatif: "Bukan cuma X, tapi Y", "Ini bukan sekadar A, ini B." Tulis klaim langsung.
+- Jangan paksa "aturan tiga" (tiga hal berjajar) cuma biar terdengar lengkap.
+- Jangan ganti-ganti sinonim untuk subjek yang sama (elegant variation). Pakai satu istilah.
+- Jangan "false range": "dari A sampai Z" kalau A dan Z bukan satu skala berarti.
+- Kalimat aktif. Jangan buang subjek ("Hasil disimpan otomatis" -> "Sistem menyimpan hasil otomatis").
+
+GAYA & FORMAT
+- DILARANG dash panjang (— atau –). Pakai titik, koma, titik dua, kurung, atau baris baru.
+- Tanpa markdown: tanpa **bold**, *italic*, # heading, backtick, atau "---" sebagai divider. Plain text.
+- Tanpa emoji (kecuali diminta). Tanpa kutip melengkung ("" ''); pakai kutip lurus.
+
+NADA & PEMBUKA
+- Buang pembuka heboh/basa-basi: "Di era sekarang", "Menariknya", "Tau nggak sih", "Penting banget nih", "Jujur aja?", "Gini deh", "The thing is".
+- Buang signposting: "mari kita bahas", "yuk kita bedah", "tanpa basa-basi", "ini yang perlu kamu tahu".
+- Buang trope otoritas: "pertanyaan sebenarnya adalah", "pada intinya", "yang benar-benar penting", "secara fundamental".
+- Buang aforisme template: "X adalah Y-nya Z", "X jadi jebakan", "bahasa dari...", "arsitektur dari...". Tulis klaim konkretnya.
+- Jangan deretan kalimat pendek dramatis berturut-turut buat efek (staccato). Satu kalimat pendek penekanan boleh; serentetan jangan.
+- Buang hedging: "mungkin", "bisa jadi", "sepertinya", "kurang lebih", "agak". Dan kata pengisi: "sangat", "benar-benar", "sebenarnya", "cukup".
+- Buang penutup positif generik: "masa depan cerah", "semoga bermanfaat", "langkah ke arah yang benar". Tutup dengan klaim/fakta konkret.
+
+PUNYA SUARA (jangan steril)
+- Ritme bervariasi: campur kalimat pendek dan panjang, jangan semua selevel.
+- Boleh punya opini/sudut pandang yang bisa dipertahankan, bukan cuma melaporkan netral.
+
+TES: kalau kalimat bisa muncul di blog perusahaan mana pun, bikin lebih spesifik. Kalau tidak akan kamu ucapkan ke teman, jangan tulis. Sebelum selesai, scan ulang: ada dash panjang? markdown? kosakata AI di atas? Kalau ada, perbaiki dulu.`;
 
 /** Bersihkan output: hapus emphasis markdown (**bold**, *italic*) & em/en dash (— –). */
 function stripMarkdown(s: string): string {

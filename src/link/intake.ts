@@ -4,7 +4,7 @@
 import { config, type Lang } from "../config";
 import { scrapeArticle } from "./scrape";
 import { insertProcessing, patch, markQueued, remove } from "./db";
-import { writeTweet } from "../youtube/ai";
+import { writeArticleTweet } from "../youtube/ai";
 import { sendPhoto, sendText } from "../youtube/telegram";
 import { createPost } from "../buffer/client";
 
@@ -20,7 +20,7 @@ export async function handleLink(url: string, lang: Lang = "id"): Promise<string
     imageUrl = img;
     await patch(row.id, { content: text, image_url: img });
 
-    tweet = (await writeTweet(text, lang)).trim();
+    tweet = (await writeArticleTweet(text, lang)).trim();
     await patch(row.id, { tweet });
   } catch (err) {
     await remove(row.id);
